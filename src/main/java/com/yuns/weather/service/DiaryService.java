@@ -1,5 +1,8 @@
 package com.yuns.weather.service;
 
+import com.yuns.weather.domain.Diary;
+import com.yuns.weather.repository.DiaryRepository;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -19,10 +22,25 @@ public class DiaryService {
     @Value("${openweathermap.key}")
     private String apiKey;
 
+    private final DiaryRepository diaryRepository;
+
+    public DiaryService(DiaryRepository diaryRepository) {
+        this.diaryRepository = diaryRepository;
+    }
+
     public void createDiary(LocalDate date, String text) {
         String weatherData = getWeatherString();
 
         Map<String, Object> parsedWeather = parseWeather(weatherData);
+
+        Diary diary = new Diary();
+        diary.setWeather(parsedWeather.get("main").toString());
+        diary.setIcon(parsedWeather.get("icon").toString());
+        diary.setTemperature((Double) parsedWeather.get("temp"));
+        diary.setText(text);
+        diary.setDate(date);
+
+        diaryRepository.save(diary);
     }
 
     private String getWeatherString() {
@@ -63,7 +81,8 @@ public class DiaryService {
         Map<String, Object> resultMap = new HashMap<>();
         JSONObject mainData = (JSONObject) jsonObject.get("main");
         resultMap.put("temp", mainData.get("temp"));
-        JSONObject weatherData = (JSONObject) jsonObject.get("weather");
+        JSONArray weatherArray = (JSONArray) jsonObject.get("weather");
+        JSONObject weatherData = (JSONObject) weatherArray.get(0);
         resultMap.put("main", weatherData.get("main"));
         resultMap.put("icon", weatherData.get("icon"));
         return resultMap;
