@@ -1,12 +1,15 @@
 package com.yuns.weather.service;
 
+import com.yuns.weather.domain.DateWeather;
 import com.yuns.weather.domain.Diary;
+import com.yuns.weather.repository.DateWeatherRepository;
 import com.yuns.weather.repository.DiaryRepository;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,24 +31,53 @@ public class DiaryService {
 
     private final DiaryRepository diaryRepository;
 
-    public DiaryService(DiaryRepository diaryRepository) {
+    private final DateWeatherRepository dateWeatherRepository;
+
+    public DiaryService(DiaryRepository diaryRepository, DateWeatherRepository dateWeatherRepository) {
         this.diaryRepository = diaryRepository;
+        this.dateWeatherRepository = dateWeatherRepository;
+    }
+
+    // 매일 오전 1시마다 날씨 데이터 저장
+    @Transactional
+    @Scheduled(cron = "0 0 1 * * *")
+    public void saveWeatherDate() {
+        dateWeatherRepository.save(getWeatherFromApi());
+    }
+
+    private DateWeather getWeatherFromApi() {
+        String weatherData = getWeatherString();
+        Map<String, Object> parsedWeather = parseWeather(weatherData);
+
+        DateWeather dateWeather = new DateWeather();
+        dateWeather.setDate(LocalDate.now());
+        dateWeather.setWeather(parsedWeather.get("main").toString());
+        dateWeather.setIcon(parsedWeather.get("icon").toString());
+        dateWeather.setTemperature((Double) parsedWeather.get("temp"));
+        return dateWeather;
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public void createDiary(LocalDate date, String text) {
-        String weatherData = getWeatherString();
-
-        Map<String, Object> parsedWeather = parseWeather(weatherData);
+        // db에서 날씨 정보 가져오기
+        DateWeather dateWeather = getDateWeather(date);
 
         Diary diary = new Diary();
-        diary.setWeather(parsedWeather.get("main").toString());
-        diary.setIcon(parsedWeather.get("icon").toString());
-        diary.setTemperature((Double) parsedWeather.get("temp"));
+        diary.setDateWeather(dateWeather);
         diary.setText(text);
         diary.setDate(date);
 
         diaryRepository.save(diary);
+    }
+
+    private DateWeather getDateWeather(LocalDate date) {
+        List<DateWeather> dateWeatherList = dateWeatherRepository.findAllByDate(date);
+        if (dateWeatherList.isEmpty()) {
+            // db에 날씨 정보가 없으면 api에서 가져오기
+            return getWeatherFromApi();
+        } else {
+            return dateWeatherList.get(0);
+        }
     }
 
     @Transactional(readOnly = true)
