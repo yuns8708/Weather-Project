@@ -1,5 +1,6 @@
 package com.yuns.weather.service;
 
+import com.yuns.weather.WeatherApplication;
 import com.yuns.weather.domain.DateWeather;
 import com.yuns.weather.domain.Diary;
 import com.yuns.weather.repository.DateWeatherRepository;
@@ -8,6 +9,8 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -32,6 +35,8 @@ public class DiaryService {
     private final DiaryRepository diaryRepository;
 
     private final DateWeatherRepository dateWeatherRepository;
+
+    private static final Logger logger = LoggerFactory.getLogger(WeatherApplication.class);
 
     public DiaryService(DiaryRepository diaryRepository, DateWeatherRepository dateWeatherRepository) {
         this.diaryRepository = diaryRepository;
@@ -59,6 +64,7 @@ public class DiaryService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public void createDiary(LocalDate date, String text) {
+        logger.info("started create diary");
         // db에서 날씨 정보 가져오기
         DateWeather dateWeather = getDateWeather(date);
 
@@ -68,6 +74,8 @@ public class DiaryService {
         diary.setDate(date);
 
         diaryRepository.save(diary);
+        logger.info("end to create diary");
+
     }
 
     private DateWeather getDateWeather(LocalDate date) {
@@ -82,6 +90,7 @@ public class DiaryService {
 
     @Transactional(readOnly = true)
     public List<Diary> readDiary(LocalDate date) {
+        logger.debug("read diary");
         return diaryRepository.findAllByDate(date);
     }
 
