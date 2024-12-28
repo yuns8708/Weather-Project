@@ -3,6 +3,7 @@ package com.yuns.weather.service;
 import com.yuns.weather.WeatherApplication;
 import com.yuns.weather.domain.DateWeather;
 import com.yuns.weather.domain.Diary;
+import com.yuns.weather.error.InvalidDate;
 import com.yuns.weather.repository.DateWeatherRepository;
 import com.yuns.weather.repository.DiaryRepository;
 import org.json.simple.JSONArray;
@@ -91,6 +92,9 @@ public class DiaryService {
     @Transactional(readOnly = true)
     public List<Diary> readDiary(LocalDate date) {
         logger.debug("read diary");
+//        if(date.isAfter(LocalDate.ofYearDay(3050, 1))) {
+//            throw new InvalidDate();
+//        }
         return diaryRepository.findAllByDate(date);
     }
 
